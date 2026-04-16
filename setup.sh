@@ -24,7 +24,8 @@ PYTHON="$(command -v python3)"
 
 # ── Workspace ─────────────────────────────────────────────────────────────────
 DEFAULT_WS="$(dirname "$SCRIPT_DIR")"
-read -rp "Workspace directory (parent folder of your projects) [$DEFAULT_WS]: " WORKSPACE
+echo "Workspace = the folder that CONTAINS your projects (md-viewer's parent)."
+read -rp "Workspace directory [$DEFAULT_WS]: " WORKSPACE
 WORKSPACE="${WORKSPACE:-$DEFAULT_WS}"
 WORKSPACE="$(cd "$WORKSPACE" && pwd)"   # resolve to absolute path
 
@@ -32,7 +33,17 @@ if [ ! -d "$WORKSPACE" ]; then
   echo "✗ '$WORKSPACE' is not a directory. Aborting."
   exit 1
 fi
-echo "  Using workspace: $WORKSPACE"
+
+# Warn if workspace == md-viewer itself (common mistake when running with . or cd)
+if [ "$WORKSPACE" = "$SCRIPT_DIR" ]; then
+  echo ""
+  echo "  ⚠  The workspace you chose is the md-viewer folder itself."
+  echo "     md-viewer needs to be INSIDE the workspace, not BE the workspace."
+  echo "     Switching to the parent: $(dirname "$SCRIPT_DIR")"
+  WORKSPACE="$(dirname "$SCRIPT_DIR")"
+fi
+
+echo "  Workspace: $WORKSPACE"
 
 # ── Port ─────────────────────────────────────────────────────────────────────
 read -rp "Port [7700]: " PORT
@@ -40,25 +51,37 @@ PORT="${PORT:-7700}"
 
 # ── Local hostname ────────────────────────────────────────────────────────────
 echo ""
-echo "Local URL options:"
-echo "  1) http://mdviewer.localhost:$PORT  — works in all modern browsers, no sudo"
-echo "  2) Custom name (e.g. docs.home)    — added to /etc/hosts, requires sudo"
+echo "Local URL — choose one option or type a hostname directly:"
+echo "  1) mdviewer.localhost   (no sudo, works in modern browsers)"
+echo "  2) docs.home            (added to /etc/hosts, requires sudo)"
+echo "  or type your own hostname, e.g. mdviewer.torstrong.org"
 echo ""
-read -rp "Choice [1]: " HOST_CHOICE
-HOST_CHOICE="${HOST_CHOICE:-1}"
+read -rp "Choice or hostname [1]: " HOST_INPUT
+HOST_INPUT="${HOST_INPUT:-1}"
 
-if [ "$HOST_CHOICE" = "2" ]; then
-  read -rp "  Hostname (e.g. docs.home): " CUSTOM_HOST
-  if grep -q "$CUSTOM_HOST" /etc/hosts 2>/dev/null; then
+if [ "$HOST_INPUT" = "1" ]; then
+  CUSTOM_HOST="mdviewer.localhost"
+  NEEDS_HOSTS=false
+elif [ "$HOST_INPUT" = "2" ]; then
+  CUSTOM_HOST="docs.home"
+  NEEDS_HOSTS=true
+else
+  # User typed a hostname directly
+  CUSTOM_HOST="$HOST_INPUT"
+  NEEDS_HOSTS=true
+fi
+
+if $NEEDS_HOSTS; then
+  if grep -qF "$CUSTOM_HOST" /etc/hosts 2>/dev/null; then
     echo "  '$CUSTOM_HOST' already in /etc/hosts — skipping."
   else
+    echo "  Adding '$CUSTOM_HOST' to /etc/hosts (requires sudo)..."
     echo "127.0.0.1  $CUSTOM_HOST" | sudo tee -a /etc/hosts > /dev/null
-    echo "  Added '$CUSTOM_HOST' to /etc/hosts"
+    echo "  Done."
   fi
-  FRIENDLY_URL="http://$CUSTOM_HOST:$PORT"
-else
-  FRIENDLY_URL="http://mdviewer.localhost:$PORT"
 fi
+
+FRIENDLY_URL="http://$CUSTOM_HOST:$PORT"
 
 # ── Install Python deps ───────────────────────────────────────────────────────
 echo ""
@@ -112,15 +135,16 @@ launchctl unload "$PLIST_PATH" 2>/dev/null || true
 launchctl load "$PLIST_PATH"
 
 echo ""
-echo "┌─────────────────────────────────────────────┐"
-echo "│  ✓ md-viewer is running!                    │"
-echo "│                                             │"
-printf  "│  URL  : %-35s│\n" "$FRIENDLY_URL"
-echo "│  Logs : ~/Library/Logs/md-viewer.log        │"
-echo "│                                             │"
-echo "│  Useful commands:                           │"
-printf  "│  Stop   : launchctl unload %-17s│\n" "$PLIST_PATH"
-printf  "│  Start  : launchctl load   %-17s│\n" "$PLIST_PATH"
-printf  "│  Logs   : tail -f ~/Library/Logs/md-viewer.log │\n"
-echo "└─────────────────────────────────────────────┘"
+echo "┌──────────────────────────────────────────────────┐"
+echo "│  ✓ md-viewer is running!                         │"
+echo "│                                                  │"
+printf "│  URL      : %-37s│\n" "$FRIENDLY_URL"
+printf "│  Workspace: %-37s│\n" "$WORKSPACE"
+echo "│  Logs     : ~/Library/Logs/md-viewer.log         │"
+echo "│                                                  │"
+echo "│  Commands:                                       │"
+echo "│  Stop  → launchctl unload $PLIST_NAME.plist  │"
+echo "│  Start → launchctl load   $PLIST_NAME.plist  │"
+echo "│  Logs  → tail -f ~/Library/Logs/md-viewer.log   │"
+echo "└──────────────────────────────────────────────────┘"
 echo ""
