@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}MD Viewer{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+    // Apply stored theme before first paint to avoid flash
+    (function () {
+      if (localStorage.getItem('md-theme') === 'light')
+        document.documentElement.setAttribute('data-theme', 'light');
+    })();
+  </script>
 </head>
 <body>
   <header class="topbar">
@@ -12,7 +19,10 @@
       <a href="/" class="logo">◈ docs</a>
       {% block breadcrumb %}{% endblock %}
     </nav>
-    {% block topbar_right %}{% endblock %}
+    <div style="display:flex;align-items:center;gap:4px">
+      {% block topbar_right %}{% endblock %}
+      <button class="theme-toggle" id="theme-toggle" title="Cambiar tema">☀</button>
+    </div>
   </header>
 
   <main class="main-content">
@@ -20,6 +30,23 @@
   </main>
 
   {% block scripts %}{% endblock %}
+  <script>
+    // Theme toggle — runs on every page
+    (function () {
+      const btn  = document.getElementById('theme-toggle');
+      const html = document.documentElement;
+      function applyTheme(light) {
+        html.setAttribute('data-theme', light ? 'light' : 'dark');
+        localStorage.setItem('md-theme', light ? 'light' : 'dark');
+        btn.textContent = light ? '☾' : '☀';
+        btn.title = light ? 'Modo oscuro' : 'Modo día';
+      }
+      // Sync icon with current theme
+      applyTheme(html.getAttribute('data-theme') === 'light');
+      btn.addEventListener('click', () =>
+        applyTheme(html.getAttribute('data-theme') !== 'light'));
+    })();
+  </script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>

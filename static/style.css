@@ -18,6 +18,25 @@
   --sidebar-w: 300px;
 }
 
+[data-theme="light"] {
+  --bg:        #ffffff;
+  --surface:   #f6f8fa;
+  --surface2:  #eaeef2;
+  --border:    #d0d7de;
+  --text:      #1f2328;
+  --text-muted:#57606a;
+  --accent:    #0969da;
+  --green:     #1a7f37;
+  --yellow:    #9a6700;
+  --red:       #cf222e;
+  --orange:    #bc4c00;
+}
+[data-theme="light"] .md-content tr:nth-child(even) td { background: rgba(0,0,0,.03); }
+[data-theme="light"] mark.ann-highlight[data-color="yellow"] { background: rgba(210,167,  0,.20); }
+[data-theme="light"] mark.ann-highlight[data-color="blue"]   { background: rgba(  9,105,218,.13); }
+[data-theme="light"] mark.ann-highlight[data-color="green"]  { background: rgba( 26,127, 55,.13); }
+[data-theme="light"] mark.ann-highlight[data-color="red"]    { background: rgba(207, 34, 46,.13); }
+
 html, body {
   height: 100%;
   background: var(--bg);
@@ -500,16 +519,36 @@ mark.ann-highlight sup.ann-num {
 .btn-save { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
 .btn-save:hover { filter: brightness(1.1); }
 
+/* ── Theme toggle ────────────────────────────────────────── */
+.theme-toggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 15px;
+  padding: 4px 8px;
+  border-radius: var(--radius);
+  line-height: 1;
+  transition: background .1s, color .1s;
+}
+.theme-toggle:hover { background: var(--surface2); color: var(--text); }
+
 /* ── Collapsed sidebar ───────────────────────────────────── */
 .notes-panel.collapsed {
   width: 40px;
   min-width: 40px;
-  padding: 16px 8px;
+  padding: 8px 0;
   overflow: hidden;
 }
 .notes-panel.collapsed .notes-list,
 .notes-panel.collapsed .notes-empty,
-.notes-panel.collapsed .notes-panel-header span { display: none; }
+.notes-panel.collapsed .resolved-toggle,
+.notes-panel.collapsed .notes-panel-header > span { display: none; }
+.notes-panel.collapsed .notes-panel-header {
+  justify-content: center;
+  border-bottom: none;
+  padding-bottom: 0;
+}
 .notes-panel.collapsed .panel-toggle { transform: rotate(180deg); }
 .viewer-layout.collapsed { grid-template-columns: 1fr 40px; }
 
