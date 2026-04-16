@@ -319,19 +319,71 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius);
   padding: 10px 12px;
   position: relative;
+  cursor: pointer;
+  transition: border-color .15s, opacity .2s;
 }
+.note-card:hover { border-color: var(--text-muted); }
 .note-card[data-color="yellow"] { border-left: 3px solid var(--yellow); }
 .note-card[data-color="blue"]   { border-left: 3px solid var(--accent); }
 .note-card[data-color="green"]  { border-left: 3px solid var(--green); }
 .note-card[data-color="red"]    { border-left: 3px solid var(--red); }
+.note-card.resolved             { opacity: .45; }
+.note-card.resolved .note-text { text-decoration: line-through; color: var(--text-muted); }
 
+.note-num     { display: inline-block; font-size: 9px; font-family: var(--font-mono); background: var(--border); color: var(--text-muted); border-radius: 3px; padding: 1px 4px; margin-right: 5px; vertical-align: middle; }
 .note-section { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .note-text    { font-size: 12px; color: var(--text); margin-bottom: 6px; line-height: 1.5; }
 .note-quote   { font-size: 11px; color: var(--text-muted); font-style: italic; border-left: 2px solid var(--border); padding-left: 6px; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .note-footer  { display: flex; align-items: center; justify-content: space-between; }
+.note-footer-actions { display: flex; align-items: center; gap: 4px; }
 .note-date    { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
 .note-delete  { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 13px; padding: 0 2px; line-height: 1; }
-.note-delete:hover { color: var(--red); }
+.note-delete:hover  { color: var(--red); }
+.note-resolve { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 13px; padding: 0 2px; line-height: 1; }
+.note-resolve:hover              { color: var(--green); }
+.note-card.resolved .note-resolve { color: var(--green); }
+
+/* flash when navigating to a card */
+@keyframes card-flash {
+  0%   { box-shadow: 0 0 0 2px var(--accent); }
+  100% { box-shadow: none; }
+}
+.note-card.flash { animation: card-flash .7s ease-out; }
+
+/* ── Document annotation highlights ─────────────────────── */
+mark.ann-highlight {
+  background: transparent;
+  border-radius: 2px;
+  padding: 1px 0;
+  cursor: pointer;
+  transition: filter .15s;
+}
+mark.ann-highlight[data-color="yellow"] { background: rgba(240,192,  0,.18); border-bottom: 2px solid rgba(240,192,  0,.75); }
+mark.ann-highlight[data-color="blue"]   { background: rgba( 88,166,255,.15); border-bottom: 2px solid rgba( 88,166,255,.75); }
+mark.ann-highlight[data-color="green"]  { background: rgba( 63,185, 80,.15); border-bottom: 2px solid rgba( 63,185, 80,.75); }
+mark.ann-highlight[data-color="red"]    { background: rgba(248, 81, 73,.15); border-bottom: 2px solid rgba(248, 81, 73,.75); }
+mark.ann-highlight:hover { filter: brightness(1.35); }
+mark.ann-highlight.resolved { opacity: .35; border-bottom-style: dashed; }
+mark.ann-highlight sup.ann-num {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  opacity: .75;
+  margin-left: 1px;
+}
+
+/* resolved toggle in panel header */
+.resolved-toggle {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 6px;
+  transition: background .1s, color .1s, border-color .1s;
+}
+.resolved-toggle:hover    { background: var(--surface); color: var(--text); border-color: var(--border); }
+.resolved-toggle.active   { color: var(--green); border-color: var(--green); }
 
 /* ── Floating Annotation Button ──────────────────────────── */
 .ann-btn {

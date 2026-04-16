@@ -26,7 +26,10 @@
   <aside class="notes-panel" id="notes-panel">
     <div class="notes-panel-header">
       <span>Notas</span>
-      <button class="panel-toggle" id="panel-toggle" title="Colapsar">◀</button>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="resolved-toggle" id="resolved-toggle" title="Mostrar resueltas">✓ resueltas</button>
+        <button class="panel-toggle" id="panel-toggle" title="Colapsar">◀</button>
+      </div>
     </div>
     <div class="notes-list" id="notes-list">
       <p class="notes-empty" id="notes-empty">

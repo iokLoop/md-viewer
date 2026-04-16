@@ -21,11 +21,14 @@
   const annPreview  = document.getElementById('ann-selected-preview');
   const annSave     = document.getElementById('ann-save');
   const annCancel   = document.getElementById('ann-cancel');
-  const panelToggle = document.getElementById('panel-toggle');
-  const notesPanel  = document.getElementById('notes-panel');
-  const layout      = document.querySelector('.viewer-layout');
-  const counter     = document.getElementById('notes-counter');
-  const backToTop   = document.getElementById('back-to-top');
+  const panelToggle    = document.getElementById('panel-toggle');
+  const notesPanel     = document.getElementById('notes-panel');
+  const layout         = document.querySelector('.viewer-layout');
+  const counter        = document.getElementById('notes-counter');
+  const backToTop      = document.getElementById('back-to-top');
+  const resolvedToggle = document.getElementById('resolved-toggle');
+
+  let showResolved = false;
 
   if (!content) return; // safety guard
 
@@ -169,45 +172,91 @@
 
   // ── Render notes sidebar ─────────────────────────────────────────────────
   function renderNotes() {
-    const anns = notes.annotations || [];
+    const allAnns = notes.annotations || [];
+    // Build global index map (by creation order, regardless of filter)
+    const globalIdx = new Map(allAnns.map((a, i) => [a.id, i + 1]));
+
+    const anns = showResolved ? allAnns : allAnns.filter(a => a.status !== 'resolved');
     notesList.innerHTML = '';
 
-    if (anns.length === 0) {
+    if (allAnns.length === 0) {
       notesEmpty.style.display = 'block';
+      highlightAnnotations();
       return;
     }
     notesEmpty.style.display = 'none';
 
-    // Group by section
+    // Group by section (preserving original order within each group)
     const grouped = {};
+    const groupOrder = [];
     anns.forEach(a => {
       const sec = a.section || '(sin sección)';
-      (grouped[sec] = grouped[sec] || []).push(a);
+      if (!grouped[sec]) { grouped[sec] = []; groupOrder.push(sec); }
+      grouped[sec].push(a);
     });
 
-    Object.entries(grouped).forEach(([section, items]) => {
+    groupOrder.forEach(section => {
+      const items = grouped[section];
       const secLabel = document.createElement('div');
       secLabel.style.cssText = 'font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;padding:6px 0 4px;border-bottom:1px solid var(--border);margin-bottom:6px;';
       secLabel.textContent = section.replace(/^#{2,3}\s*/, '');
       notesList.appendChild(secLabel);
 
       items.forEach(ann => {
+        const num      = globalIdx.get(ann.id);
+        const resolved = ann.status === 'resolved';
         const card = document.createElement('div');
         card.classList.add('note-card');
+        if (resolved) card.classList.add('resolved');
         card.dataset.color = ann.color || 'yellow';
+        card.dataset.annId = ann.id;
         card.innerHTML = `
-          ${ann.selected_text
-            ? `<div class="note-quote">"${escHtml(ann.selected_text.slice(0, 80))}${ann.selected_text.length > 80 ? '…' : ''}"</div>`
-            : ''}
+          <div style="margin-bottom:4px">
+            <span class="note-num">#${num}</span>
+            ${ann.selected_text
+              ? `<span class="note-quote" style="display:inline">"${escHtml(ann.selected_text.slice(0, 60))}${ann.selected_text.length > 60 ? '…' : ''}"</span>`
+              : ''}
+          </div>
           <div class="note-text">${escHtml(ann.note)}</div>
           <div class="note-footer">
             <span class="note-date">${ann.created || ''}</span>
-            <button class="note-delete" data-id="${ann.id}" title="Eliminar">✕</button>
+            <span class="note-footer-actions">
+              <button class="note-resolve" data-id="${ann.id}" title="${resolved ? 'Reabrir' : 'Marcar resuelta'}">✓</button>
+              <button class="note-delete"  data-id="${ann.id}" title="Eliminar">✕</button>
+            </span>
           </div>`;
         notesList.appendChild(card);
+
+        // Click card body → scroll to highlight in doc (or section heading)
+        card.addEventListener('click', (e) => {
+          if (e.target.classList.contains('note-delete') ||
+              e.target.classList.contains('note-resolve')) return;
+          const hl = content.querySelector(`.ann-highlight[data-ann-id="${ann.id}"]`);
+          if (hl) {
+            const y = hl.getBoundingClientRect().top + window.scrollY - 80;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+          } else if (ann.section) {
+            const norm = slugNormalize(ann.section.replace(/^#{2,3}\s*/, ''));
+            let target = null;
+            content.querySelectorAll('h2,h3').forEach(h => {
+              if (target) return;
+              const hText = slugNormalize(
+                Array.from(h.childNodes)
+                  .filter(n => !(n.classList && n.classList.contains('section-toggle')))
+                  .map(n => n.textContent).join('')
+              );
+              if (hText === norm) target = h;
+            });
+            if (target) {
+              const y = target.getBoundingClientRect().top + window.scrollY - 60;
+              window.scrollTo({ top: y, behavior: 'smooth' });
+            }
+          }
+        });
       });
     });
 
+    // Delete buttons
     notesList.querySelectorAll('.note-delete').forEach(btn => {
       btn.addEventListener('click', () => {
         apiPost({ action: 'delete_annotation', id: btn.dataset.id }).then(data => {
@@ -217,16 +266,105 @@
         });
       });
     });
+
+    // Resolve buttons
+    notesList.querySelectorAll('.note-resolve').forEach(btn => {
+      btn.addEventListener('click', () => {
+        apiPost({ action: 'resolve_annotation', id: btn.dataset.id }).then(data => {
+          notes = data.file_data;
+          renderNotes();
+          updateCounter();
+        });
+      });
+    });
+
+    highlightAnnotations();
+  }
+
+  // ── Highlight annotated text in the document ─────────────────────────────
+  function highlightAnnotations() {
+    // Remove existing highlights, restoring original text nodes
+    content.querySelectorAll('mark.ann-highlight').forEach(mark => {
+      const text = Array.from(mark.childNodes)
+        .filter(n => n.nodeType === Node.TEXT_NODE)
+        .map(n => n.textContent).join('');
+      mark.parentNode.replaceChild(document.createTextNode(text), mark);
+      mark.parentNode.normalize?.();
+    });
+
+    const allAnns = notes.annotations || [];
+    const globalIdx = new Map(allAnns.map((a, i) => [a.id, i + 1]));
+
+    allAnns.forEach(ann => {
+      if (!ann.selected_text) return;
+      const search = ann.selected_text;
+      const walker = document.createTreeWalker(
+        content,
+        NodeFilter.SHOW_TEXT,
+        { acceptNode: n => n.parentElement.closest('.section-toggle, mark')
+            ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT }
+      );
+      let node;
+      while ((node = walker.nextNode())) {
+        const pos = node.textContent.indexOf(search);
+        if (pos === -1) continue;
+
+        const before = node.textContent.slice(0, pos);
+        const after  = node.textContent.slice(pos + search.length);
+
+        const mark = document.createElement('mark');
+        mark.className = 'ann-highlight' + (ann.status === 'resolved' ? ' resolved' : '');
+        mark.dataset.annId = ann.id;
+        mark.dataset.color  = ann.color || 'yellow';
+        mark.title = `[#${globalIdx.get(ann.id)}] ${ann.note}`;
+        mark.appendChild(document.createTextNode(search));
+        const sup = document.createElement('sup');
+        sup.className   = 'ann-num';
+        sup.textContent = `#${globalIdx.get(ann.id)}`;
+        mark.appendChild(sup);
+
+        const parent = node.parentNode;
+        if (before) parent.insertBefore(document.createTextNode(before), node);
+        parent.insertBefore(mark, node);
+        if (after) parent.insertBefore(document.createTextNode(after), node);
+        parent.removeChild(node);
+
+        // Click highlight → flash the note card in sidebar
+        mark.addEventListener('click', () => {
+          const card = notesList.querySelector(`[data-ann-id="${ann.id}"]`);
+          if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            card.classList.remove('flash');
+            void card.offsetWidth;
+            card.classList.add('flash');
+            setTimeout(() => card.classList.remove('flash'), 700);
+          }
+        });
+        break; // first occurrence only
+      }
+    });
   }
 
   // ── Counter ──────────────────────────────────────────────────────────────
   function updateCounter() {
-    const anns = (notes.annotations || []).length;
-    const done = (notes.completed_sections || []).length;
-    const parts = [];
-    if (anns > 0) parts.push(`💬 ${anns}`);
-    if (done > 0) parts.push(`✓ ${done}`);
+    const allAnns  = notes.annotations || [];
+    const open     = allAnns.filter(a => a.status !== 'resolved').length;
+    const resolved = allAnns.filter(a => a.status === 'resolved').length;
+    const done     = (notes.completed_sections || []).length;
+    const parts    = [];
+    if (open > 0)     parts.push(`💬 ${open}`);
+    if (resolved > 0) parts.push(`✓ ${resolved}`);
+    if (done > 0)     parts.push(`☑ ${done}`);
     counter.textContent = parts.join('  ');
+  }
+
+  // ── Resolved toggle ──────────────────────────────────────────────────────
+  if (resolvedToggle) {
+    resolvedToggle.addEventListener('click', () => {
+      showResolved = !showResolved;
+      resolvedToggle.classList.toggle('active', showResolved);
+      renderNotes();
+    });
   }
 
   // ── Panel collapse ───────────────────────────────────────────────────────
