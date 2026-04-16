@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Proyectos — MD Viewer{% endblock %}
+
+{% block breadcrumb %}
+  <span class="sep">/</span>
+  <span class="crumb-current">proyectos</span>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Workspace</h1>
+  <p class="page-sub">{{ projects|length }} proyecto{{ 's' if projects|length != 1 else '' }} con archivos Markdown</p>
+</div>
+
+<div class="project-grid">
+  {% for p in projects %}
+  <a href="/{{ p.name }}/" class="project-card">
+    <div class="project-card-header">
+      <span class="project-icon">⬡</span>
+      <span class="project-name">{{ p.name }}</span>
+    </div>
+    <div class="project-stats">
+      <span class="stat">
+        <span class="stat-num">{{ p.md_count }}</span>
+        <span class="stat-label">.md</span>
+      </span>
+      {% if p.annotations > 0 %}
+      <span class="stat">
+        <span class="stat-num note-count">{{ p.annotations }}</span>
+        <span class="stat-label">notas</span>
+      </span>
+      {% endif %}
+      {% if p.completed > 0 %}
+      <span class="stat">
+        <span class="stat-num done-count">{{ p.completed }}</span>
+        <span class="stat-label">✓ secciones</span>
+      </span>
+      {% endif %}
+    </div>
+    {% if p.has_notes %}
+    <div class="project-badge">con notas</div>
+    {% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

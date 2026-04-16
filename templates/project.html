@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ project }} — MD Viewer{% endblock %}
+
+{% block breadcrumb %}
+  <span class="sep">/</span>
+  <a href="/{{ project }}/" class="crumb">{{ project }}</a>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">{{ project }}</h1>
+  <p class="page-sub">{{ files|length }} archivo{{ 's' if files|length != 1 else '' }} Markdown</p>
+</div>
+
+{% set folders = {} %}
+{% for f in files %}
+  {% set folder = f.folder or '(raíz)' %}
+  {% if folder not in folders %}
+    {% set _ = folders.update({folder: []}) %}
+  {% endif %}
+{% endfor %}
+
+{% set current_folder = namespace(val='__unset__') %}
+<div class="file-list">
+  {% for f in files %}
+    {% set folder = f.folder or '(raíz)' %}
+    {% if folder != current_folder.val %}
+      {% if current_folder.val != '__unset__' %}</div>{% endif %}
+      {% set current_folder.val = folder %}
+      <div class="folder-group">
+      <div class="folder-label">{{ folder }}</div>
+    {% endif %}
+
+    <a href="/{{ project }}/view/{{ f.path }}" class="file-row">
+      <span class="file-icon">⬡</span>
+      <span class="file-name">{{ f.name }}</span>
+      <span class="file-meta">
+        {% if f.completed > 0 %}
+          <span class="badge badge-done">✓ {{ f.completed }}</span>
+        {% endif %}
+        {% if f.annotations > 0 %}
+          <span class="badge badge-note">💬 {{ f.annotations }}</span>
+        {% endif %}
+        <span class="file-size">{{ f.size_kb }} kb</span>
+      </span>
+    </a>
+  {% endfor %}
+  {% if files %}</div>{% endif %}
+</div>
+{% endblock %}

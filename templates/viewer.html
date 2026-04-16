@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ filename }} — {{ project }}{% endblock %}
+
+{% block breadcrumb %}
+  <span class="sep">/</span>
+  <a href="/{{ project }}/" class="crumb">{{ project }}</a>
+  <span class="sep">/</span>
+  <span class="crumb-current">{{ filename }}</span>
+{% endblock %}
+
+{% block topbar_right %}
+<div class="topbar-actions">
+  <span class="notes-counter" id="notes-counter"></span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="viewer-layout">
+
+  <!-- Markdown content -->
+  <article class="md-content" id="md-content">
+    {{ content | safe }}
+  </article>
+
+  <!-- Sidebar de notas -->
+  <aside class="notes-panel" id="notes-panel">
+    <div class="notes-panel-header">
+      <span>Notas</span>
+      <button class="panel-toggle" id="panel-toggle" title="Colapsar">◀</button>
+    </div>
+    <div class="notes-list" id="notes-list">
+      <p class="notes-empty" id="notes-empty">
+        Selecciona texto en el documento<br>para agregar una nota.
+      </p>
+    </div>
+  </aside>
+</div>
+
+<!-- Floating annotation button -->
+<div class="ann-btn" id="ann-btn" style="display:none">
+  💬 Anotar
+</div>
+
+<!-- Annotation popup -->
+<div class="ann-popup" id="ann-popup" style="display:none">
+  <div class="ann-popup-header">Nueva nota</div>
+  <div class="ann-selected-text" id="ann-selected-preview"></div>
+  <textarea class="ann-textarea" id="ann-textarea" placeholder="Escribe tu nota..." rows="3"></textarea>
+  <div class="ann-colors">
+    <span class="color-dot" data-color="yellow" style="background:#f0c000" title="Amarillo"></span>
+    <span class="color-dot" data-color="blue"   style="background:#58a6ff" title="Azul"></span>
+    <span class="color-dot" data-color="green"  style="background:#3fb950" title="Verde"></span>
+    <span class="color-dot" data-color="red"    style="background:#f85149" title="Rojo"></span>
+  </div>
+  <div class="ann-popup-actions">
+    <button class="btn-cancel" id="ann-cancel">Cancelar</button>
+    <button class="btn-save"   id="ann-save">Guardar</button>
+  </div>
+</div>
+<div class="ann-overlay" id="ann-overlay" style="display:none"></div>
+
+<!-- Back to top -->
+<button class="back-to-top" id="back-to-top" title="Volver arriba">↑</button>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const PROJECT    = {{ project | tojson }};
+  const FILEPATH   = {{ filepath | tojson }};
+  const INIT_NOTES = {{ notes_json | safe }};
+</script>
+{% endblock %}
