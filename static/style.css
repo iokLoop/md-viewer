@@ -414,7 +414,7 @@ mark.ann-highlight[data-color="blue"]   { background: rgba( 88,166,255,.07); bor
 mark.ann-highlight[data-color="green"]  { background: rgba( 63,185, 80,.07); border-bottom: 2px solid rgba( 63,185, 80,.60); }
 mark.ann-highlight[data-color="red"]    { background: rgba(248, 81, 73,.07); border-bottom: 2px solid rgba(248, 81, 73,.60); }
 mark.ann-highlight:hover { filter: brightness(1.5); }
-mark.ann-highlight.resolved { opacity: .35; border-bottom-style: dashed; }
+mark.ann-highlight.resolved { border-bottom-style: dashed; }
 mark.ann-highlight sup.ann-num {
   font-size: 9px;
   font-family: var(--font-mono);
