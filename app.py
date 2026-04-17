@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import uuid
 from datetime import datetime
@@ -89,7 +90,18 @@ def save_notes(project_name, notes):
 
 def render_markdown(text):
     processor = md_lib.Markdown(extensions=MD_EXT)
-    return processor.convert(text)
+    html = processor.convert(text)
+    # Convert GitHub-style task list items: <li>[ ] / <li>[x]
+    counter = [0]
+    def replace_task(m):
+        checked = m.group(1).strip().lower() == 'x'
+        idx = counter[0]
+        counter[0] += 1
+        chk = ' checked' if checked else ''
+        return (f'<li class="task-item">'
+                f'<input type="checkbox" class="task-check" data-idx="{idx}"{chk}>')
+    html = re.sub(r'<li>\[([ xX])\]', replace_task, html)
+    return html
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
@@ -180,6 +192,14 @@ def api_update_notes(project):
                 if ann['id'] == aid and ann.get('status') != 'resolved':
                     ann['note'] = new_note
                     break
+
+    elif action == 'toggle_task':
+        idx   = data.get('idx')
+        tasks = file_data.setdefault('checked_tasks', [])
+        if idx in tasks:
+            tasks.remove(idx)
+        else:
+            tasks.append(idx)
 
     elif action == 'resolve_annotation':
         aid = data.get('id')

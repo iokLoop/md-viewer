@@ -284,6 +284,20 @@ a:hover { text-decoration: underline; }
 
 .md-content hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 
+.md-content li.task-item { list-style: none; margin-left: -1.2em; }
+.md-content .task-check {
+  cursor: pointer;
+  margin-right: 6px;
+  width: 13px;
+  height: 13px;
+  accent-color: var(--accent);
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+.md-content li.task-item.task-done > * { opacity: .5; }
+.md-content li.task-item.task-done { text-decoration: line-through; color: var(--text-muted); }
+
 /* Highlight for annotated text (base — overridden by mark.ann-highlight below) */
 
 /* ── Notes Panel ─────────────────────────────────────────── */

@@ -521,8 +521,26 @@
       .replace(/>/g, '&gt;');
   }
 
+  // ── Task checkboxes ───────────────────────────────────────────────────────
+  function initTaskChecks() {
+    const checked = new Set(notes.checked_tasks || []);
+    content.querySelectorAll('.task-check').forEach(cb => {
+      const idx = parseInt(cb.dataset.idx);
+      cb.checked = checked.has(idx);
+      if (cb.checked) cb.closest('li')?.classList.add('task-done');
+
+      cb.addEventListener('change', () => {
+        cb.closest('li')?.classList.toggle('task-done', cb.checked);
+        apiPost({ action: 'toggle_task', idx }).then(data => {
+          notes = data.file_data;
+        });
+      });
+    });
+  }
+
   // ── Init ─────────────────────────────────────────────────────────────────
   initSectionToggles();
+  initTaskChecks();
   renderNotes();
   updateCounter();
 
