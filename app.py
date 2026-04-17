@@ -172,6 +172,15 @@ def api_update_notes(project):
         aid = data.get('id')
         file_data['annotations'] = [a for a in file_data['annotations'] if a['id'] != aid]
 
+    elif action == 'edit_annotation':
+        aid      = data.get('id')
+        new_note = data.get('note', '').strip()
+        if new_note:
+            for ann in file_data.get('annotations', []):
+                if ann['id'] == aid and ann.get('status') != 'resolved':
+                    ann['note'] = new_note
+                    break
+
     elif action == 'resolve_annotation':
         aid = data.get('id')
         for ann in file_data.get('annotations', []):

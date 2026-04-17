@@ -240,6 +240,7 @@
           <div class="note-footer">
             <span class="note-date">${ann.created || ''}</span>
             <span class="note-footer-actions">
+              ${!resolved ? `<button class="note-edit" data-id="${ann.id}" title="Editar">✎</button>` : ''}
               <button class="note-resolve" data-id="${ann.id}" title="${resolved ? 'Reabrir' : 'Marcar resuelta'}">✓</button>
               <button class="note-delete"  data-id="${ann.id}" title="Eliminar">✕</button>
             </span>
@@ -248,8 +249,12 @@
 
         // Click card body → scroll to highlight in doc (or section heading)
         card.addEventListener('click', (e) => {
-          if (e.target.classList.contains('note-delete') ||
-              e.target.classList.contains('note-resolve')) return;
+          if (e.target.classList.contains('note-delete')  ||
+              e.target.classList.contains('note-resolve') ||
+              e.target.classList.contains('note-edit')    ||
+              e.target.classList.contains('note-edit-save') ||
+              e.target.classList.contains('note-edit-cancel') ||
+              e.target.classList.contains('note-edit-area')) return;
           const hl = content.querySelector(`.ann-highlight[data-ann-id="${ann.id}"]`);
           if (hl) {
             const y = hl.getBoundingClientRect().top + window.scrollY - 80;
@@ -293,6 +298,49 @@
           notes = data.file_data;
           renderNotes();
           updateCounter();
+        });
+      });
+    });
+
+    // Edit buttons — inline edit: replace note-text with textarea
+    notesList.querySelectorAll('.note-edit').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const card     = btn.closest('.note-card');
+        const noteText = card.querySelector('.note-text');
+        const footer   = card.querySelector('.note-footer-actions');
+        const current  = noteText.textContent;
+
+        // Swap text div for textarea
+        const ta = document.createElement('textarea');
+        ta.className = 'note-edit-area';
+        ta.value = current;
+        ta.rows  = Math.max(2, current.split('\n').length + 1);
+        noteText.replaceWith(ta);
+        ta.focus();
+        ta.selectionStart = ta.selectionEnd = ta.value.length;
+
+        // Swap footer buttons for save/cancel
+        const origFooter = footer.innerHTML;
+        footer.innerHTML = `
+          <button class="note-edit-save"   title="Guardar">✓</button>
+          <button class="note-edit-cancel" title="Cancelar">✕</button>`;
+
+        const doSave = () => {
+          const newText = ta.value.trim();
+          if (!newText) return;
+          apiPost({ action: 'edit_annotation', id: btn.dataset.id, note: newText })
+            .then(data => { notes = data.file_data; renderNotes(); });
+        };
+        const doCancel = () => {
+          ta.replaceWith(noteText);
+          footer.innerHTML = origFooter;
+        };
+
+        footer.querySelector('.note-edit-save').addEventListener('click', doSave);
+        footer.querySelector('.note-edit-cancel').addEventListener('click', doCancel);
+        ta.addEventListener('keydown', e => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) doSave();
+          if (e.key === 'Escape') doCancel();
         });
       });
     });
