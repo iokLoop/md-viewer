@@ -322,19 +322,26 @@
       let   seenOcc   = 0;
       let   placed    = false;
 
+      // Walk ALL text nodes — including those inside existing marks so we count
+      // them correctly. We detect and skip wrapping ones already claimed.
       const walker = document.createTreeWalker(
         content,
         NodeFilter.SHOW_TEXT,
-        { acceptNode: n => n.parentElement.closest('.section-toggle, mark')
+        { acceptNode: n => n.parentElement.closest('.section-toggle')
             ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT }
       );
 
       let node;
       while ((node = walker.nextNode()) && !placed) {
+        const insideMark = !!node.parentElement.closest('mark.ann-highlight');
         let searchFrom = 0;
         let pos;
         while ((pos = node.textContent.indexOf(search, searchFrom)) !== -1) {
           if (seenOcc === targetOcc) {
+            if (insideMark) {
+              // Already highlighted by a previous annotation — count it but skip
+              placed = true; break;
+            }
             // This is the right occurrence — wrap it
             const before = node.textContent.slice(0, pos);
             const after  = node.textContent.slice(pos + search.length);
