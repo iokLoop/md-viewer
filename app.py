@@ -165,6 +165,7 @@ def api_update_notes(project):
             'section':       data.get('section', ''),
             'created':       datetime.now().isoformat()[:16],
             'color':         data.get('color', 'yellow'),
+            'occurrence':    data.get('occurrence', 0),
         })
 
     elif action == 'delete_annotation':

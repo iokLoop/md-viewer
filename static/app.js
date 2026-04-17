@@ -5,10 +5,11 @@
   if (typeof PROJECT === 'undefined') return;
 
   // ── State ───────────────────────────────────────────────────────────────
-  let notes        = INIT_NOTES;
-  let selectedText = '';
-  let selectedSection = '';
-  let activeColor  = 'yellow';
+  let notes             = INIT_NOTES;
+  let selectedText      = '';
+  let selectedSection   = '';
+  let selectedOccurrence = 0;   // which occurrence of selectedText in the doc (0-based)
+  let activeColor       = 'yellow';
 
   // ── DOM refs ────────────────────────────────────────────────────────────
   const content     = document.getElementById('md-content');
@@ -115,6 +116,18 @@
       selectedText    = text;
       selectedSection = getNearestSection(range.startContainer);
 
+      // Count how many times 'text' appears before this selection point
+      // so we know which occurrence to highlight later
+      try {
+        const preRange = document.createRange();
+        preRange.selectNodeContents(content);
+        preRange.setEnd(range.startContainer, range.startOffset);
+        const before = preRange.toString();
+        let occ = 0, pos = 0;
+        while ((pos = before.indexOf(text, pos)) !== -1) { occ++; pos += text.length; }
+        selectedOccurrence = occ;
+      } catch (_) { selectedOccurrence = 0; }
+
       // position:fixed → viewport coords, no scrollY
       const rect = range.getBoundingClientRect();
       annBtn.style.display = 'block';
@@ -152,6 +165,7 @@
       note:          noteText,
       section:       selectedSection,
       color:         activeColor,
+      occurrence:    selectedOccurrence,
     };
     closePopup();   // close immediately — don't wait for the server
     apiPost(payload).then(data => {
@@ -303,50 +317,62 @@
 
     allAnns.forEach(ann => {
       if (!ann.selected_text) return;
-      const search = ann.selected_text;
+      const search    = ann.selected_text;
+      const targetOcc = ann.occurrence ?? 0;  // which occurrence to highlight (0-based)
+      let   seenOcc   = 0;
+      let   placed    = false;
+
       const walker = document.createTreeWalker(
         content,
         NodeFilter.SHOW_TEXT,
         { acceptNode: n => n.parentElement.closest('.section-toggle, mark')
             ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT }
       );
+
       let node;
-      while ((node = walker.nextNode())) {
-        const pos = node.textContent.indexOf(search);
-        if (pos === -1) continue;
+      while ((node = walker.nextNode()) && !placed) {
+        let searchFrom = 0;
+        let pos;
+        while ((pos = node.textContent.indexOf(search, searchFrom)) !== -1) {
+          if (seenOcc === targetOcc) {
+            // This is the right occurrence — wrap it
+            const before = node.textContent.slice(0, pos);
+            const after  = node.textContent.slice(pos + search.length);
 
-        const before = node.textContent.slice(0, pos);
-        const after  = node.textContent.slice(pos + search.length);
+            const mark = document.createElement('mark');
+            mark.className = 'ann-highlight' + (ann.status === 'resolved' ? ' resolved' : '');
+            mark.dataset.annId = ann.id;
+            mark.dataset.color  = ann.color || 'yellow';
+            mark.title = `[#${globalIdx.get(ann.id)}] ${ann.note}`;
+            mark.appendChild(document.createTextNode(search));
+            const sup = document.createElement('sup');
+            sup.className   = 'ann-num';
+            sup.textContent = `#${globalIdx.get(ann.id)}`;
+            mark.appendChild(sup);
 
-        const mark = document.createElement('mark');
-        mark.className = 'ann-highlight' + (ann.status === 'resolved' ? ' resolved' : '');
-        mark.dataset.annId = ann.id;
-        mark.dataset.color  = ann.color || 'yellow';
-        mark.title = `[#${globalIdx.get(ann.id)}] ${ann.note}`;
-        mark.appendChild(document.createTextNode(search));
-        const sup = document.createElement('sup');
-        sup.className   = 'ann-num';
-        sup.textContent = `#${globalIdx.get(ann.id)}`;
-        mark.appendChild(sup);
+            const parent = node.parentNode;
+            if (before) parent.insertBefore(document.createTextNode(before), node);
+            parent.insertBefore(mark, node);
+            if (after) parent.insertBefore(document.createTextNode(after), node);
+            parent.removeChild(node);
 
-        const parent = node.parentNode;
-        if (before) parent.insertBefore(document.createTextNode(before), node);
-        parent.insertBefore(mark, node);
-        if (after) parent.insertBefore(document.createTextNode(after), node);
-        parent.removeChild(node);
+            mark.addEventListener('click', () => {
+              const card = notesList.querySelector(`[data-ann-id="${ann.id}"]`);
+              if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                card.classList.remove('flash');
+                void card.offsetWidth;
+                card.classList.add('flash');
+                setTimeout(() => card.classList.remove('flash'), 700);
+              }
+            });
 
-        // Click highlight → flash the note card in sidebar
-        mark.addEventListener('click', () => {
-          const card = notesList.querySelector(`[data-ann-id="${ann.id}"]`);
-          if (card) {
-            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            card.classList.remove('flash');
-            void card.offsetWidth;
-            card.classList.add('flash');
-            setTimeout(() => card.classList.remove('flash'), 700);
+            placed = true;
+            break;
           }
-        });
-        break; // first occurrence only
+          seenOcc++;
+          searchFrom = pos + search.length;
+        }
       }
     });
   }
