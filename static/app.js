@@ -143,18 +143,23 @@
 
   annSave.addEventListener('click', () => {
     const noteText = annTextarea.value.trim();
-    if (!noteText) return;
-    apiPost({
+    if (!noteText || annSave.disabled) return;
+    annSave.disabled = true;
+    // Capture before closePopup clears selection state
+    const payload = {
       action:        'add_annotation',
       selected_text: selectedText,
       note:          noteText,
       section:       selectedSection,
       color:         activeColor,
-    }).then(data => {
+    };
+    closePopup();   // close immediately — don't wait for the server
+    apiPost(payload).then(data => {
       notes = data.file_data;
       renderNotes();
       updateCounter();
-      closePopup();
+    }).finally(() => {
+      annSave.disabled = false;
     });
   });
 
@@ -285,11 +290,12 @@
   function highlightAnnotations() {
     // Remove existing highlights, restoring original text nodes
     content.querySelectorAll('mark.ann-highlight').forEach(mark => {
+      const parent = mark.parentNode;             // save ref BEFORE replaceChild
       const text = Array.from(mark.childNodes)
         .filter(n => n.nodeType === Node.TEXT_NODE)
         .map(n => n.textContent).join('');
-      mark.parentNode.replaceChild(document.createTextNode(text), mark);
-      mark.parentNode.normalize?.();
+      parent.replaceChild(document.createTextNode(text), mark);
+      parent.normalize();                         // parent is still in DOM — safe
     });
 
     const allAnns = notes.annotations || [];
